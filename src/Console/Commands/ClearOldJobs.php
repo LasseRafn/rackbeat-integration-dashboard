@@ -4,10 +4,8 @@ namespace KgBot\RackbeatDashboard\Console\Commands;
 
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Config;
 use KgBot\RackbeatDashboard\Classes\DashboardJobExport;
 use KgBot\RackbeatDashboard\Models\Job;
-use Maatwebsite\Excel\Excel;
 
 class ClearOldJobs extends Command
 {
@@ -42,31 +40,12 @@ class ClearOldJobs extends Command
      */
     public function handle()
     {
-        // Backup old jobs
-        $file = fopen(storage_path('jobs-' . Carbon::now()->toDateString() . '.csv'), 'w');
-        
-        // Headers
-        fputcsv($file, [
-            'id',
-            'command',
-            'created_by',
-            'created_at',
-            'finished_at',
-            'title',
+        Job::create([
+          
+            'command' => DashboardJobExport::class,
+            'queue' => config('queue.connections.redis.queue'),
+            'title' => 'Export old jobs',
         ]);
-        
-        Job::whereState('success')->whereDate('created_at', '<', Carbon::now()->subDays(7))->each(function ($job) use($file) {
-            fputcsv($file, [
-                $job->id,
-                $job->command,
-                $job->created_by,
-                $job->created_at,
-                $job->finished_at,
-                $job->title,
-            ]);
-        });
-        
-        fclose($file);
         
         // Delete after backing up
         Job::whereState('success')->whereDate('created_at', '<', Carbon::now()->subDays(7))->delete();
