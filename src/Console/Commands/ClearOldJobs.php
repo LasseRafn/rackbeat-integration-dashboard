@@ -41,7 +41,7 @@ class ClearOldJobs extends Command
     public function handle()
     {
         Job::create([
-          
+
             'command' => DashboardJobExport::class,
             'queue' => config('queue.connections.redis.queue'),
             'title' => 'Export old jobs',
