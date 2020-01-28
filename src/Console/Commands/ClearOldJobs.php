@@ -42,8 +42,34 @@ class ClearOldJobs extends Command
      */
     public function handle()
     {
-        (new DashboardJobExport())->store('jobs-' . Carbon::now()->toDateString() . '.csv', 'local', Excel::CSV)->allOnQueue(Config::get('queue.connections.redis.queue'));
-
+        // Backup old jobs
+        $file = fopen(storage_path('jobs-' . Carbon::now()->toDateString() . '.csv'), 'w');
+        
+        // Headers
+        fputcsv($file, [
+            'id', 
+            'title',
+            'queue',
+            'payload',
+            'delay',
+            'report',
+            'state',
+            'progress',
+            'command',
+            'attempts',
+            'created_by',
+            'created_at',
+            'finished_at',
+            'args',
+        ]);
+        
+        Job::whereState('success')->whereDate('created_at', '<', Carbon::now()->subDays(7))->each(function ($job) use($file) {
+            fputcsv($file, $job->toArray());
+        });
+        
+        fclose($file);
+        
+        // Delete after backing up
         Job::whereState('success')->whereDate('created_at', '<', Carbon::now()->subDays(7))->delete();
         
         return true;
